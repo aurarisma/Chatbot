@@ -6,8 +6,6 @@ import random
 import time
 import pandas as pd
 from difflib import get_close_matches
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 # ================================
 # CONFIG
