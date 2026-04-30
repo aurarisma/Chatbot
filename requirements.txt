@@ -1,7 +1,7 @@
 streamlit
 pandas
-scikit-learn
 numpy
-plotly
-xlsxwriter
 openpyxl
+tensorflow-cpu
+scikit-learn
+pickle-mixin
