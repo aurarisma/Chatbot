@@ -7,6 +7,16 @@ import time
 import pandas as pd
 from difflib import get_close_matches
 
+try:
+    from tensorflow.keras.models import load_model
+    TF_AVAILABLE = True
+except:
+    TF_AVAILABLE = False
+
+if TF_AVAILABLE:
+    model = load_model("chatbot_model.h5")
+else:
+    st.error("TensorFlow tidak tersedia")
 # ================================
 # CONFIG
 # ================================
@@ -113,8 +123,6 @@ section[data-testid="stSidebar"] {
 def load_all():
     try:
         model = load_model("chatbot_model.h5")
-        tokenizer = pickle.load(open("tokenizer.pkl", "rb"))
-        label_encoder = pickle.load(open("label_encoder.pkl", "rb"))
         responses = pickle.load(open("responses.pkl", "rb"))
 
         df = pd.read_excel("DATASET_PHS.xlsx")
