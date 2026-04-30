@@ -121,18 +121,33 @@ section[data-testid="stSidebar"] {
 # ================================
 @st.cache_resource
 def load_all():
-    try:
-        from tensorflow.keras.models import load_model
-        TF_AVAILABLE = True
-        model = load_model("chatbot_model.h5")
-        responses = pickle.load(open("responses.pkl", "rb"))
+import os
+import pandas as pd
+import streamlit as st
 
-        dataset_path = os.path.join(BASE_DIR, "DATASET_PHS.xlsx")
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# SAFE IMPORT TENSORFLOW
+try:
+    from tensorflow.keras.models import load_model
+    TF_AVAILABLE = True
+except:
+    TF_AVAILABLE = False
+
+# LOAD DATASET
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 dataset_path = os.path.join(BASE_DIR, "DATASET_PHS.xlsx")
 
 if os.path.exists(dataset_path):
     df = pd.read_excel(dataset_path)
+
+    st.write("Preview Dataset:")
+    st.write(df.head())
+
+    st.write("Nama Kolom:")
+    st.write(df.columns)
+
+    st.success("Dataset berhasil dibaca")
+else:
+    st.error("Dataset tidak ditemukan")
 
     # DEBUG CEK DATASET
     st.write("Preview Dataset:")
