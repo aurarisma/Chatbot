@@ -120,7 +120,6 @@ section[data-testid="stSidebar"] {
 # LOAD DATA
 # ================================
 @st.cache_resource
-def load_all():
 import os
 import pandas as pd
 import streamlit as st
