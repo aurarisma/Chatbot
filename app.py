@@ -1,14 +1,3 @@
-# ================================
-# HAPUS SEMUA DEBUG / WARNING DI TAMPILAN
-# AGAR TIDAK MUNCUL:
-# - Lokasi Folder
-# - Dataset Path
-# - chatbot_model.h5 tidak ditemukan
-# - tokenizer.pkl tidak ditemukan
-# - label_encoder.pkl tidak ditemukan
-# - responses.pkl tidak ditemukan
-# ================================
-
 import streamlit as st
 import numpy as np
 import pickle
@@ -19,7 +8,7 @@ import os
 from difflib import get_close_matches
 
 # ================================
-# SAFE IMPORT TENSORFLOW
+# SAFE IMPORT TENSORFLOW (OPTIONAL)
 # ================================
 try:
     from tensorflow.keras.models import load_model
@@ -37,7 +26,7 @@ st.set_page_config(
 )
 
 # ================================
-# CSS PREMIUM UI (PUNYA ASLI)
+# CSS (TETAP PREMIUM - TIDAK DIUBAH)
 # ================================
 st.markdown("""
 <style>
@@ -48,6 +37,14 @@ st.markdown("""
     background: url("https://img.freepik.com/free-vector/clean-medical-background_53876-116875.jpg") !important;
     background-size: cover !important;
     background-attachment: fixed !important;
+}
+
+[data-testid="stAppViewContainer"]::before {
+    content: "";
+    position: absolute;
+    width: 100%; height: 100%;
+    background: rgba(255,255,255,0.75);
+    z-index: -1;
 }
 
 .header-box {
@@ -64,7 +61,6 @@ st.markdown("""
     padding: 25px;
     border-radius: 20px;
     text-align: center;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.05);
 }
 
 .user-msg {
@@ -79,7 +75,6 @@ st.markdown("""
 
 .bot-msg {
     background: white;
-    color: #2d3748;
     padding: 15px 20px;
     border-radius: 20px 20px 20px 5px;
     margin: 12px 0;
@@ -89,42 +84,32 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ================================
-# LOAD DATA (TANPA DEBUG TAMPILAN)
+# LOAD DATA (AMAN TANPA ERROR)
 # ================================
 @st.cache_resource
 def load_all():
     try:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
         dataset_path = os.path.join(BASE_DIR, "DATASET_PHS.xlsx")
 
-        # HANYA BACA DATASET EXCEL
         if os.path.exists(dataset_path):
             df = pd.read_excel(dataset_path)
-
-            # rapikan nama kolom
             df.columns = df.columns.str.strip().str.lower()
 
             if "pertanyaan" in df.columns and "jawaban" in df.columns:
                 qa_pairs = dict(zip(df["pertanyaan"], df["jawaban"]))
             else:
                 qa_pairs = {}
-
         else:
             qa_pairs = {}
 
-        # model dll tidak wajib untuk versi deploy aman
-        model = None
-        tokenizer = None
-        label_encoder = None
-        responses = None
-
-        return model, tokenizer, label_encoder, responses, qa_pairs
+        return None, None, None, None, qa_pairs
 
     except:
         return None, None, None, None, {
             "demam": "Istirahat yang cukup dan minum air putih.",
-            "batuk": "Minum air hangat dan istirahat cukup."
+            "batuk": "Minum air hangat dan istirahat cukup.",
+            "sakit kepala": "Istirahat cukup dan kurangi stres."
         }
 
 model, tokenizer, label_encoder, responses, qa_pairs = load_all()
@@ -136,10 +121,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "patient" not in st.session_state:
-    st.session_state.patient = {
-        "nama": "",
-        "umur": ""
-    }
+    st.session_state.patient = {"nama": "", "umur": ""}
 
 # ================================
 # FUNCTION
@@ -147,19 +129,43 @@ if "patient" not in st.session_state:
 def clean_text(text):
     return re.sub(r'[^a-zA-Z0-9\s]', '', text.lower()).strip()
 
+# 🔥 COMBINE: SMART + SAFE
 def get_response(user_input):
     text = clean_text(user_input)
     nama = st.session_state.patient["nama"] or "Pasien"
 
-    # exact match
+    # 1. EXACT MATCH
     if text in qa_pairs:
         return f"Halo {nama}, {qa_pairs[text]}"
 
-    # similar match
+    # 2. KEYWORD MATCHING (SEMUA DATASET)
+    input_words = set(text.split())
+
+    best_match = None
+    best_score = 0
+
+    for key, value in qa_pairs.items():
+        key_words = set(clean_text(key).split())
+        common = input_words.intersection(key_words)
+
+        if len(key_words) > 0:
+            score = len(common) / len(key_words)
+        else:
+            score = 0
+
+        if score > best_score:
+            best_score = score
+            best_match = key
+
+    if best_match and best_score >= 0.4:
+        return f"Halo {nama}, {qa_pairs[best_match]}"
+
+    # 3. FUZZY MATCH
     match = get_close_matches(text, qa_pairs.keys(), n=1, cutoff=0.6)
     if match:
         return f"Halo {nama}, {qa_pairs[match[0]]}"
 
+    # 4. FALLBACK
     return f"Maaf {nama}, saya belum menemukan jawaban yang sesuai di database kami. Silakan konsultasi ke tenaga medis."
 
 # ================================
@@ -167,10 +173,8 @@ def get_response(user_input):
 # ================================
 st.markdown("""
 <div class="header-box">
-<h1 style='margin:0; color:#0083b0;'>🏥 Health Bot Clinic</h1>
-<p style='color:#718096; font-size:1.1rem;'>
-Edukasi Pola Hidup Sehat Berbasis Kecerdasan Buatan
-</p>
+<h1>🏥 Health Bot Clinic</h1>
+<p>Edukasi Pola Hidup Sehat Berbasis AI</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -180,61 +184,31 @@ Edukasi Pola Hidup Sehat Berbasis Kecerdasan Buatan
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    nama_val = st.session_state.patient["nama"] if st.session_state.patient["nama"] else "Pasien Baru"
-    st.markdown(f"""
-    <div class="info-card">
-        👤<br>
-        <b>NAMA PASIEN</b><br>
-        {nama_val}
-    </div>
-    """, unsafe_allow_html=True)
+    nama_val = st.session_state.patient["nama"] or "Pasien Baru"
+    st.markdown(f"<div class='info-card'>👤<br>{nama_val}</div>", unsafe_allow_html=True)
 
 with col2:
-    st.markdown(f"""
-    <div class="info-card">
-        💬<br>
-        <b>HISTORY</b><br>
-        {len(st.session_state.messages)} Chat
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<div class='info-card'>💬<br>{len(st.session_state.messages)} Chat</div>", unsafe_allow_html=True)
 
 with col3:
-    umur_val = st.session_state.patient["umur"] if st.session_state.patient["umur"] else "-"
-    st.markdown(f"""
-    <div class="info-card">
-        🎂<br>
-        <b>UMUR PASIEN</b><br>
-        {umur_val}
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
+    umur_val = st.session_state.patient["umur"] or "-"
+    st.markdown(f"<div class='info-card'>🎂<br>{umur_val}</div>", unsafe_allow_html=True)
 
 # ================================
 # SIDEBAR
 # ================================
 with st.sidebar:
-    st.markdown("## 📋 Data Pasien")
-
     with st.form("form_pasien"):
-        nama_input = st.text_input("Nama Lengkap", st.session_state.patient["nama"])
+        nama_input = st.text_input("Nama", st.session_state.patient["nama"])
         umur_input = st.text_input("Usia", st.session_state.patient["umur"])
 
-        submit = st.form_submit_button("Simpan")
-
-        if submit:
+        if st.form_submit_button("Simpan"):
             if nama_input and umur_input.isdigit():
                 st.session_state.patient["nama"] = nama_input
                 st.session_state.patient["umur"] = umur_input
-                st.success("Data berhasil disimpan")
-                time.sleep(0.5)
                 st.rerun()
-            else:
-                st.error("Input tidak valid")
 
-    st.markdown("---")
-
-    if st.button("🗑️ Hapus Riwayat Chat", use_container_width=True):
+    if st.button("🗑️ Hapus Chat"):
         st.session_state.messages = []
         st.rerun()
 
@@ -251,32 +225,19 @@ if not st.session_state.messages:
 
 for msg in st.session_state.messages:
     if msg["role"] == "user":
-        st.markdown(
-            f"<div class='user-msg'>{msg['content']}</div>",
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<div class='user-msg'>{msg['content']}</div>", unsafe_allow_html=True)
     else:
-        st.markdown(
-            f"<div class='bot-msg'><b>⚕️ HealthBot:</b><br>{msg['content']}</div>",
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<div class='bot-msg'><b>⚕️ HealthBot:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
 
 # ================================
-# INPUT CHAT
+# INPUT
 # ================================
 if prompt := st.chat_input("Ketik di sini untuk berkonsultasi..."):
-    st.session_state.messages.append({
-        "role": "user",
-        "content": prompt
-    })
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.spinner("Sedang memproses..."):
         time.sleep(0.5)
         response = get_response(prompt)
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response
-    })
-
+    st.session_state.messages.append({"role": "assistant", "content": response})
     st.rerun()
